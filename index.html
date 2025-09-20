@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Realtime Chatroom</title>
     <link rel="stylesheet" href="chat-animations.css">
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <div class="chat-container">
-        <div class="messages">
-            <!-- Messages will be appended here via JS -->
+        <div class="messages" id="messages">
+            <!-- Messages will be appended here -->
         </div>
         <div class="input-area">
             <input type="text" id="message-input" placeholder="Type your message...">
@@ -18,37 +19,53 @@
     </div>
 
     <script>
-        // Basic JS for chat functionality (assuming original had something similar)
-        const messagesDiv = document.querySelector('.messages');
+        const socket = io();
+
+        const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
 
+        // Function to add message
+        function addMessage(text, isOwn) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', isOwn ? 'message-right' : 'message-left', 'new-message');
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Send message
         sendButton.addEventListener('click', () => {
             const messageText = messageInput.value.trim();
             if (messageText) {
-                const messageDiv = document.createElement('div');
-                messageDiv.classList.add('message', 'message-right', 'new-message');
-                messageDiv.textContent = messageText;
-                messagesDiv.appendChild(messageDiv);
+                socket.emit('chat message', messageText);
+                addMessage(messageText, true);
                 messageInput.value = '';
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
             }
         });
 
-        // Simulate incoming message
-        setTimeout(() => {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message', 'message-left');
-            messageDiv.textContent = 'Hello! This is a test message.';
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }, 2000);
+        // Receive message
+        socket.on('chat message', (msg) => {
+            addMessage(msg, false);
+        });
 
-        // Typing indicator example
+        // Optional: Typing indicator
         const typingDiv = document.createElement('div');
         typingDiv.classList.add('typing-indicator');
         typingDiv.innerHTML = '<span></span><span></span><span></span>';
-        // You can append it dynamically when someone is typing
+        typingDiv.style.display = 'none';
+        messagesDiv.appendChild(typingDiv);
+
+        messageInput.addEventListener('input', () => {
+            socket.emit('typing');
+        });
+
+        socket.on('typing', () => {
+            typingDiv.style.display = 'flex';
+            setTimeout(() => {
+                typingDiv.style.display = 'none';
+            }, 3000);
+        });
     </script>
 </body>
 </html>
